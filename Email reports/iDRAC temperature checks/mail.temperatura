@@ -1,0 +1,11 @@
+#!/bin/bash
+
+DIRFILE=/var/log/temp_minuto_a_minuto_"$(date +%F%t)".log
+
+# Henryson# Por enquanto que nao eh possivel conectar ao iDRAC de linguado localmente
+mv /tmp/temp_minuto_a_minuto_"$(date +%F%t)".log "$DIRFILE"
+
+mail -s "Monitoramento da temperatura" henryson@lsd.ufcg.edu.br < "$DIRFILE"
+
+echo "" > "$DIRFILE"
+
