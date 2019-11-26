@@ -1,0 +1,130 @@
+heat_template_version: 2013-05-23
+description: Lanca um par de instancias rodando o iperf em uma arquitetura cliente/servidor e roda um teste por 5 minutos. Par B1B2
+
+parameters:
+  private: {default: 3bc5763e-ef5a-4cca-a743-52de93c42d3c, description: Rede interna da cloud, type: string}
+  public: {default: c975b468-1fa8-4cab-b4ff-046fb6037b76, description: Rede publica da cloud, type: string}
+  ssh_key:
+   type: string
+   description: Chave ssh para as instancias
+   default: henryson-timbore
+
+  imagem:
+    type: string
+    default: ubuntu-passwordless-henryson
+    description: Imagem que eh usada nas instancias
+
+  flavorServer:
+    type: string
+    default: m1.small
+    description: Flavor usado pelo servidor
+
+  flavorClient:
+    type: string
+    default: m1.small
+    description: Flavor usado pelo cliente
+
+resources:
+  iperf_secgroup:
+    type: OS::Neutron::SecurityGroup
+    properties:
+      rules:
+        - protocol: tcp
+          port_range_min: 5001
+          port_range_max: 5001
+  default_secgroup:
+    type: OS::Neutron::SecurityGroup
+    properties:
+      rules:
+        - protocol: icmp
+        - port_range_min: 22
+          port_range_max: 22
+          protocol: tcp
+  iperfServer1:
+    type: OS::Nova::Server
+    properties:
+      flavor:
+        get_param: flavorServer
+      image:
+        get_param: imagem
+      networks:
+        - port:
+            get_resource: server_eth0
+      key_name:
+            get_param: ssh_key
+      user_data: |
+            #!/bin/bash
+            echo "Instalando iperf"
+            sudo apt-get install iperf -y
+            sleep 5
+            echo "Executando server de iperf em background"
+            nohup iperf -s &
+  server_eth0:
+      type: OS::Neutron::Port
+      properties:
+        network:
+            get_param: private
+        security_groups:
+            - get_resource: iperf_secgroup
+            - get_resource: default_secgroup
+#  server_floatingIP:
+#      type: OS::Neutron::FloatingIP
+#      properties:
+#        floating_network_id:
+#          get_param: public
+#        port_id:
+#          get_resource: server_eth0
+  iperfClient1:
+    type: OS::Nova::Server
+    properties:
+      flavor:
+        get_param: flavorClient
+      image:
+        get_param: imagem
+      networks:
+        - port:
+            get_resource: client_eth0
+      key_name:
+        get_param: ssh_key
+      user_data:
+        str_replace:
+          template: |
+            #!/bin/bash
+            echo "Instalando iperf"
+            sudo apt-get install iperf -y
+            sleep 20
+            echo "Criando diretorio para guardar o run"
+            mkdir /home/ubuntu/iperf
+            ssh -o StrictHostKeyChecking=no henryson@10.9.104.218 'sudo mv /var/www/html/B.txt /var/www/html/C.txt'
+            while true; do
+              # Quando for o estado C...
+              while [ $(curl -o /dev/null --silent --head --write-out '%{http_code}\n' http://10.9.104.218/C.txt) -eq 200 ]; do
+                echo "\nConectando ao server de iperf em $SERVER_IP"
+                iperf -c $SERVER_IP -y C -t 60 >> /home/ubuntu/iperf/iperfB1B2_$SERVER_IP.txt
+                chown ubuntu:ubuntu -R /home/ubuntu/iperf
+                chmod 777 -R /home/ubuntu/iperf
+                ssh -o StrictHostKeyChecking=no henryson@10.9.104.218 'sudo mv /var/www/html/C.txt /var/www/html/A.txt'
+              done
+            done
+          params:
+            $SERVER_IP:
+              get_attr: 
+                - server_eth0
+                - fixed_ips
+                - 0
+                - ip_address
+  client_eth0:
+      type: OS::Neutron::Port
+      properties:
+        network:
+            get_param: private
+        security_groups:
+            - get_resource: iperf_secgroup
+            - get_resource: default_secgroup
+#  client_floatingIP:
+#    type: OS::Neutron::FloatingIP
+#    properties:
+#        floating_network_id:
+#          get_param: public
+#        port_id:
+#          get_resource: client_eth0
