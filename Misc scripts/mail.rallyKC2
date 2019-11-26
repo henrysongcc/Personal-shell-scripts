@@ -1,0 +1,16 @@
+#!/bin/bash
+
+# Esta linha eh importante, vai garantir que o o report mais recente sera mandado por mail
+cd /home/suporte/public_html/resultsKC2
+idTaskRecente=$(ls -lht *.html | head -1 | grep -o '[^ ]*$' )
+
+# Movendo o arquivo para o diretorio de resultados do rally para a Kilocloud 2
+mv /home/suporte/public_html/resultsKC2/$idTaskRecente /home/suporte/public_html/resultsKC2/$(date +%F)_$idTaskRecente
+
+# Comando para enviar o email
+echo "Resultados do dia $(date +%F) no endereco http://www2.example.com/~suporte/resultsKC2/$(date +%F)_$idTaskRecente." | mutt -s "Kilocloud 2 - Rally resultados $(date +%F)" -- openstack_ops_ufcg@example.com
+#echo "Resultados do dia $(date +%F) no endereco http://www2.example.com/~suporte/resultsKC2/$(date +%F)_$idTaskRecente." | mutt -s "Kilocloud 2 - Rally resultados $(date +%F)" -- henryson@example.com
+
+
+# Metodo antigo, usando mutt para anexar o arquivo com os resultados
+#echo "Resultados do dia $(date +%F) em anexo." | mutt -s "Rally resultados $(date +%F)" -a /root/resultsRallyKC2/$(date +%F)_$idTaskRecente -- henryson@example.com

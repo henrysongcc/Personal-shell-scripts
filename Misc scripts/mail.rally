@@ -1,0 +1,15 @@
+#!/bin/bash
+
+# Esta linha eh importante, vai garantir que o o report mais recente sera mandado por mail
+cd /home/suporte/public_html
+idTaskRecente=$(ls -lht *.html | head -1 | grep -o '[^ ]*$' )
+
+# Renomeando o arquivo para incluir a data no nome
+mv /home/suporte/public_html/$idTaskRecente /home/suporte/public_html/$(date +%F)_$idTaskRecente
+
+# Comando para enviar o email
+echo "Resultados do dia $(date +%F) no endereco http://www2.example.com/~suporte/$(date +%F)_$idTaskRecente." | mutt -s "Cloud 3 - Rally resultados $(date +%F)" -- openstack_ops_ufcg@example.com
+#echo "Resultados do dia $(date +%F) no endereco http://www2.example.com/~suporte/$idTaskRecente." | mutt -s "Rally resultados $(date +%F)" -- henryson@example.com
+
+# Metodo antigo, usando mutt para anexar o arquivo com os resultados
+#echo "Resultados do dia $(date +%F) em anexo." | mutt -s "Rally resultados $(date +%F)" -a /tmp/$idTaskRecente -- henryson@example.com
